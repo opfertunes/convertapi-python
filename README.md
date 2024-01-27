@@ -20,7 +20,7 @@ Install from source with:
 
 ### Requirements
 
-* Python 3.3+
+* Python 2.7+ or Python 3.3+
 
 ## Usage
 
@@ -106,14 +106,6 @@ You can always check your remaining seconds amount programatically by fetching [
 user_info = convertapi.user()
 
 print(user_info['SecondsLeft'])
-```
-
-### Alternative domain
-
-Set `base_uri` parameter to use other service domains. Dedicated to the region [domain list](https://www.convertapi.com/doc/servers-location).
-
-```python
-convertapi.base_uri = 'https://eu-v2.convertapi.com/'
 ```
 
 ### More examples

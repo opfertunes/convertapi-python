@@ -6,30 +6,35 @@ from .exceptions import *
 
 class Client:
 	def get(self, path, params = {}, timeout = None):
-		url = self.__url(path)
 		timeout = timeout or convertapi.timeout
-		r = self.__session().get(url, params = params, timeout = timeout)
-		return self.__handle_response(r)
+		r = requests.get(self.url(path), params = params, headers = self.headers(), timeout = timeout)
+		return self.handle_response(r)
 
 	def post(self, path, payload, timeout = None):
-		url = self.__url(path)
 		timeout = timeout or convertapi.timeout
-		r = self.__session().post(url, data = payload, timeout = timeout)
-		return self.__handle_response(r)
+
+		url = self.url(path)
+		webhook = payload.pop('WebHook', None)
+		if webhook:
+			url += f'&WebHook={webhook}'
+
+		r = requests.post(url, data = payload, headers = self.headers(), timeout = timeout)
+		return self.handle_response(r)
 
 	def upload(self, io, filename):
 		url = convertapi.base_uri + 'upload'
 		encoded_filename = requests.utils.quote(filename)
 
-		headers = {
+		headers = self.headers()
+		headers.update({
 			'Content-Disposition': "attachment; filename*=UTF-8''" + encoded_filename,
-		}
+		})
 
-		r = self.__session().post(url, data = io, headers = headers, timeout = convertapi.upload_timeout)
-		return self.__handle_response(r)
+		r = requests.post(url, data = io, headers = headers, timeout = convertapi.upload_timeout)
+		return self.handle_response(r)
 
 	def download(self, url, path):
-		r = self.__session().get(url, stream = True, timeout = convertapi.download_timeout)
+		r = requests.get(url, stream = True, timeout = convertapi.download_timeout)
 
 		with open(path, 'wb') as f:
 			for chunk in r.iter_content(chunk_size = 1024):
@@ -39,10 +44,10 @@ class Client:
 		return path
 
 	def download_io(self, url):
-		response = self.__session().get(url, timeout = convertapi.download_timeout)
+		response = requests.get(url, timeout = convertapi.download_timeout)
 		return BytesIO(response.content)
 
-	def __handle_response(self, r):
+	def handle_response(self, r):
 		try:
 			r.raise_for_status()
 		except requests.RequestException as e:
@@ -51,14 +56,15 @@ class Client:
 			except ValueError:
 				raise e
 
+		if r.content == b'':
+			return None
+
 		return r.json()
 
-	def __url(self, path):
+	def url(self, path):
 		return "%s%s?Secret=%s" % (convertapi.base_uri, path, convertapi.api_secret)
 
-	def __session(self):
-		s = requests.Session()
-		s.headers.update({ 'User-Agent': convertapi.user_agent })
-		s.verify = convertapi.verify_ssl
-
-		return s
+	def headers(self):
+		return {
+			'User-Agent': convertapi.user_agent,
+		}

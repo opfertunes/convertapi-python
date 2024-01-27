@@ -6,11 +6,12 @@ from .result import Result
 DEFAULT_URL_FORMAT = 'web'
 
 class Task:
-    def __init__(self, from_format, to_format, params, timeout = None):
+    def __init__(self, from_format, to_format, params, timeout = None, is_async = False):
         self.from_format = from_format
         self.to_format = to_format
         self.params = params
         self.timeout = timeout or convertapi.conversion_timeout
+        self.is_async = is_async
 
         self.default_params = {
             'Timeout': self.timeout,
@@ -21,11 +22,11 @@ class Task:
         params = self.__normalize_params()
         from_format = self.from_format or self.__detect_format()
         timeout = self.timeout + convertapi.conversion_timeout_delta if self.timeout else None
-        converter = self.__detect_converter()
-        path = "convert/%s/to/%s" % (from_format, self.to_format)
+        base_path = 'convert' if not self.is_async else 'async/convert'
+        path = "%s/%s/to/%s" % (base_path, from_format, self.to_format)
 
-        if converter != None:
-            path += "/converter/%s" % (converter)
+        if 'converter' in params:
+            path += "/converter/%s" % (params['converter'])
 
         response = convertapi.client.post(path, params, timeout = timeout)
 
@@ -35,7 +36,7 @@ class Task:
         params = {}
 
         for k, v in self.params.items():
-            if k != 'StoreFile' and k.endswith('File'):
+            if k == 'File':
                 params[k] = file_param.build(v)
             elif k == 'Files':
                 results = utils.map_in_parallel(file_param.build, v, convertapi.max_parallel_uploads)
@@ -62,10 +63,3 @@ class Task:
 
         if 'Files' in self.params:
             return format_detector.detect(self.params['Files'][0])
-
-    def __detect_converter(self):
-        for k, v in self.params.items():
-            if k.lower() == 'converter':
-                return v
-
-        return None
