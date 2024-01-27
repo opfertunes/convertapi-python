@@ -18,6 +18,10 @@ class Client:
 		if webhook:
 			url += f'&WebHook={webhook}'
 
+		custom_job_id = payload.pop('CustomJobId', None)
+		if custom_job_id:
+			url += f'&JobId={custom_job_id}'	
+
 		r = requests.post(url, data = payload, headers = self.headers(), timeout = timeout)
 		return self.handle_response(r)
 
